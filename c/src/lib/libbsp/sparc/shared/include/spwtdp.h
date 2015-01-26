@@ -13,12 +13,16 @@
 #ifndef __SPWTDP_H__
 #define __SPWTDP_H__
 
-#define SPWTDP_IRQ_S		0x01
-#define SPWTDP_IRQ_TR		0x02
-#define SPWTDP_IRQ_TM		0x04
-#define SPWTDP_IRQ_TT		0x08
-#define SPWTDP_IRQ_DIR		0x10
-#define SPWTDP_IRQ_DIT		0x20
+#define SPWTDP_IRQ_S		0x001
+#define SPWTDP_IRQ_TR		0x002
+#define SPWTDP_IRQ_TM		0x004
+#define SPWTDP_IRQ_TT		0x008
+#define SPWTDP_IRQ_DIR		0x010
+#define SPWTDP_IRQ_DIT		0x020
+#define SPWTDP_IRQ_EDI0		0x040
+#define SPWTDP_IRQ_EDI1		0x080
+#define SPWTDP_IRQ_EDI2		0x100
+#define SPWTDP_IRQ_EDI3		0x200
 
 /* SPWTDP Register layout */
 struct spwtdp_regs {
@@ -41,6 +45,15 @@ struct spwtdp_regs {
 	volatile unsigned int resv5[2];      /* B8 */
 	volatile unsigned int ien;           /* C0 */
 	volatile unsigned int ists;          /* C4 */
+	volatile unsigned int resv6[14];     /* C8..FC */
+
+	/* External Datation */
+	volatile unsigned int edmask[4];     /* 100..10C */
+	struct {
+		volatile unsigned int ctrl;          /* 110 */
+		volatile unsigned int et[5];         /* 114..124 */
+		volatile unsigned int resv0[2];      /* 128..12C */
+	} edat[4];
 };
 
 /* SPWTDP Statistics gathered by driver */
