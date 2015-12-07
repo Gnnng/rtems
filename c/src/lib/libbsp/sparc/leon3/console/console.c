@@ -35,6 +35,8 @@
 #include <rtems/bspIo.h>
 #include <amba.h>
 
+#include <leon3_console.h>
+
 #ifndef RTEMS_DRVMGR_STARTUP
 
 /* Let user override which on-chip APBUART will be debug UART
@@ -70,19 +72,9 @@ extern void apbuart_outbyte_polled(
 extern int apbuart_inbyte_nonblocking(struct apbuart_regs *regs);
 
 /* body is in debugputs.c */
-
-struct apbuart_priv {
-  struct apbuart_regs *regs;
-  unsigned int freq_hz;
-#if CONSOLE_USE_INTERRUPTS
-  int irq;
-  void *cookie;
-  volatile int sending;
-  char *buf;
-#endif
-};
 static struct apbuart_priv apbuarts[BSP_NUMBER_OF_TERMIOS_PORTS];
 static int uarts = 0;
+struct apbvga_priv apbvga_con;
 
 #if CONSOLE_USE_INTERRUPTS
 
@@ -306,6 +298,23 @@ int console_scan_uarts(void)
   return uarts;
 }
 
+
+int console_scan_vga(void)
+{
+  struct ambapp_dev *dev_vga;
+  struct ambapp_apb_info *apb;
+  memset((void *)&apbvga_con, 0, sizeof(apbvga_con));
+  dev_vga = ambapp_for_each(&ambapp_plb, (OPTIONS_ALL|OPTIONS_APB_SLVS), VENDOR_GAISLER,
+		  GAISLER_VGACTRL, ambapp_find_by_idx, NULL);
+  if (!dev_vga) {
+    printk("No VGA device\n");
+    return 0;
+  }
+  apb = (struct ambapp_apb_info *)dev_vga->devinfo;
+  apbvga_con.regs = (struct apbvga_regs *)apb->start; 
+  printk("vga start address: %x\n", apbvga_con.regs);
+}
+
 /*
  *  Console Device Driver Entry Points
  *
@@ -322,6 +331,11 @@ rtems_device_driver console_initialize(
   char console_name[16];
 
   rtems_termios_initialize();
+
+ 
+  /* Initialize vga */
+  console_scan_vga();
+  _IBMPC_initVideo();
 
   /* Find UARTs */
   console_scan_uarts();

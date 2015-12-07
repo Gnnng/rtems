@@ -32,6 +32,13 @@ struct apbuart_regs {
   volatile unsigned int scaler;
 };
 
+/* APB VGA */
+struct apbvga_regs {
+  volatile unsigned int data;
+  volatile unsigned int bgcolor;
+  volatile unsigned int fgcolor;
+};
+
 /* IRQMP and IRQAMP interrupt controllers */
 struct irqmp_regs {
   volatile unsigned int ilevel;      /* 0x00 */

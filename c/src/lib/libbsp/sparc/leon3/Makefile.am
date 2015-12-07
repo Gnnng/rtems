@@ -76,7 +76,9 @@ libbsp_a_SOURCES += ../../sparc/shared/timer/tlib_ckinit.c
 libbsp_a_SOURCES += clock/ckinit.c ../../../shared/clockdrv_shell.h
 
 # console
+include_HEADERS += include/leon3_console.h
 libbsp_a_SOURCES += console/console.c
+libbsp_a_SOURCES += console/outch.c
 libbsp_a_SOURCES += ../../sparc/shared/uart/cons.c
 libbsp_a_SOURCES += ../../sparc/shared/uart/apbuart_cons.c
 include_HEADERS += ../../sparc/shared/include/cons.h
