@@ -55,8 +55,12 @@ void wr_cursor(int newPos, unsigned short ioBaseAddr) {
 }
 
 void wDataReg(unsigned int addr, char c) {
-  unsigned int x = (((addr) & 0xfff) << 8) | ((c) & 0xff);
-  apbvga_con.regs->data = (((addr) & 0xfff) << 8) | ((c) & 0xff);
+  unsigned int x;
+  if (addr >= MAX_TEXT_BUFFER_LINES * maxCol) {
+    addr -= MAX_TEXT_BUFFER_LINES * maxCol;
+  }
+  x = (((addr) & 0xfff) << 8) | ((c) & 0xff);
+  apbvga_con.regs->data = x;
 }
 
 void wbgcReg(char r, char g, char b) {
@@ -78,9 +82,10 @@ scroll(void)
     unsigned int pt_bitmap;  /* Pointers on the bit-map	*/
     unsigned int newAddr;
 
-    newAddr = *bitMapBaseAddr + maxCol * maxRow;
+    newAddr = *bitMapBaseAddr + maxCol;
     *bitMapBaseAddr = (newAddr >= MAX_TEXT_BUFFER_LINES * maxCol) ? 0 : newAddr;
-    pt_bitmap = *bitMapBaseAddr;
+    printk("bitMapBaseAddr updated: %d\n", *bitMapBaseAddr);
+    pt_bitmap = *bitMapBaseAddr + (maxRow - 1) * maxCol;
     /*
      * Directly write new line to trigger the hardware scroll
      * Details about the hardware scroll can be found in grip.pdf
