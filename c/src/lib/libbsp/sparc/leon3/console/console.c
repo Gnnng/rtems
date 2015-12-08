@@ -14,6 +14,12 @@
  *  found in the file LICENSE in this distribution or at
  *  http://www.rtems.com/license/LICENSE.
  *
+ *  Gong Deli <gnnnnng@gmail.com>, 2015/12
+ *  - Let the default console (console[0]) use vga and UARTs are handled 
+ *    starting from console[1], console[2]... 
+ *  - default console (syscon) using vga is running on polling mode
+ *  - all the UARTs' codes are unchanged
+ * 
  *  $Id$
  */
 
@@ -140,6 +146,22 @@ int console_write_interrupt (int minor, const char *buf, int len)
 
 #else
 
+extern void _IBMPC_outch(char); /* body in outch.c */
+
+static ssize_t
+apbvga_write_polled(int minor, const char *buf, size_t len)
+{
+  size_t count;
+  for (count = 0; count < len; count++)
+  {
+    _IBMPC_outch( buf[ count ] );
+    if( buf[ count ] == '\n')
+      _IBMPC_outch( '\r' );            /* LF = LF + CR */
+  }
+  return count;
+}
+
+
 /*
  *  Console Termios Support Entry Points
  *
@@ -149,14 +171,14 @@ ssize_t console_write_polled (int minor, const char *buf, size_t len)
 {
   int nwrite = 0, port;
 
-  if (minor == 0)
-    port = syscon_uart_index;
-  else
+  if (minor == 0) /* using vga console */ {
+    nwrite = apbvga_write_polled(minor, buf, len);
+  } else {
     port = minor - 1;
-
-  while (nwrite < len) {
-    apbuart_outbyte_polled(apbuarts[port].regs, *buf++, 1, 0 );
-    nwrite++;
+    while (nwrite < len) {
+      apbuart_outbyte_polled(apbuarts[port].regs, *buf++, 1, 0 );
+      nwrite++;
+    }
   }
   return nwrite;
 }
@@ -315,6 +337,7 @@ int console_scan_vga(void)
   printk("vga start address: %x\n", apbvga_con.regs);
 }
 
+extern void _IBMPC_initVideo();
 /*
  *  Console Device Driver Entry Points
  *
@@ -358,22 +381,21 @@ rtems_device_driver console_initialize(
 
   /*  Register Device Names
    *
-   *  0 /dev/console   - APBUART[USER-SELECTED, DEFAULT=APBUART[0]]
+   *  0 /dev/console   - APBVGA 
    *  1 /dev/console_a - APBUART[0] (by default not present because is console)
    *  2 /dev/console_b - APBUART[1]
    *  ...
    *
    * On a MP system one should not open UARTs that other OS instances use.
    */
-  if (syscon_uart_index < uarts) {
-    status = rtems_io_register_name( "/dev/console", major, 0 );
-    if (status != RTEMS_SUCCESSFUL)
-      rtems_fatal_error_occurred(status);
-  }
+  status = rtems_io_register_name( "/dev/console", major, 0 );
+  if (status != RTEMS_SUCCESSFUL)
+    rtems_fatal_error_occurred(status);
+  
   strcpy(console_name,"/dev/console_a");
   for (i = 0; i < uarts; i++) {
-    if (i == syscon_uart_index)
-      continue; /* skip UART that is registered as /dev/console */
+    //if (i == syscon_uart_index)
+     // continue; /* skip UART that is registered as /dev/console */
     console_name[13] = 'a' + i;
     status = rtems_io_register_name( console_name, major, i+1);
   }
@@ -426,7 +448,8 @@ rtems_device_driver console_open(
     return sc;
 
   if (minor == 0)
-    uart = &apbuarts[syscon_uart_index];
+    return RTEMS_SUCCESSFUL; // vga console can return directly
+    //uart = &apbuarts[syscon_uart_index];
   else
     uart = &apbuarts[minor - 1];
 
@@ -462,13 +485,11 @@ rtems_device_driver console_close(
   void                    * arg
 )
 {
-#if CONSOLE_USE_INTERRUPTS
   struct apbuart_priv *uart;
-
   if (minor == 0)
-    uart = &apbuarts[syscon_uart_index];
-  else
-    uart = &apbuarts[minor - 1];
+    return rtems_termios_close(arg);
+#if CONSOLE_USE_INTERRUPTS
+  uart = &apbuarts[minor - 1];
 
   /* Turn off RX interrupts */
   uart->regs->ctrl &= ~(LEON_REG_UART_CTRL_RI);

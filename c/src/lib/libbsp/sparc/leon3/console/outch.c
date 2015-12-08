@@ -278,11 +278,9 @@ clear_screen(void)
 
     for (j = 0; j < maxRow; j++) {
       for (i = 0; i < maxCol; i++) {
-	videoPutChar(' ');
+        wDataReg(i + j * maxCol, ' ');
       }
     }
-    (*column)  = 0;
-    (*row)     = 0;
 }
 
 /*-------------------------------------------------------------------------+
@@ -315,12 +313,12 @@ static int escaped = 0;
 void
 _IBMPC_initVideo(void)
 {
-    *bitMapBaseAddr = 0;
-    (*column)  = 0;
-    (*row)     = 0;
     wbgcReg(0, 0, 0);
     wfgcReg(255, 255, 255);
     clear_screen();
+    *bitMapBaseAddr = 0;
+    (*column)  = 0;
+    (*row)     = 0;
     printk("maxCol = %d, maxRow = %d, bgColor = %x, fgColor = %x\n", 
         maxCol, maxRow, apbvga_con.bgColor, apbvga_con.fgColor);
     printk("bitMapBaseAddr = %X\n", *bitMapBaseAddr);
